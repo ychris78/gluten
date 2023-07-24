@@ -1483,6 +1483,13 @@ void SubstraitToVeloxPlanConverter::setFilterInfo(
   std::optional<variant> val;
 
   auto inputType = inputTypeList[colIdxVal];
+  if (inputType->isDate()) {
+    if (substraitLit) {
+      val = variant(int(substraitLit.value().date()));
+    }
+    setColumnFilterInfo(functionName, val, columnToFilterInfo[colIdxVal], reverse);
+    return;
+  }
   switch (inputType->kind()) {
     case TypeKind::TINYINT:
       if (substraitLit) {
@@ -1529,11 +1536,6 @@ void SubstraitToVeloxPlanConverter::setFilterInfo(
     case TypeKind::VARCHAR:
       if (substraitLit) {
         val = variant(substraitLit.value().string());
-      }
-      break;
-    case TypeKind::DATE:
-      if (substraitLit) {
-        val = variant(Date(substraitLit.value().date()));
       }
       break;
     case TypeKind::HUGEINT:
@@ -1613,7 +1615,7 @@ void SubstraitToVeloxPlanConverter::setInFilter<TypeKind::BIGINT>(
     int64_t value = variant.value<int64_t>();
     values.emplace_back(value);
   }
-  filters[common::Subfield(inputName, true)] = common::createBigintValues(values, nullAllowed);
+  filters[common::Subfield(inputName)] = common::createBigintValues(values, nullAllowed);
 }
 
 template <>
@@ -1630,7 +1632,7 @@ void SubstraitToVeloxPlanConverter::setInFilter<TypeKind::INTEGER>(
     int64_t value = variant.value<int32_t>();
     values.emplace_back(value);
   }
-  filters[common::Subfield(inputName, true)] = common::createBigintValues(values, nullAllowed);
+  filters[common::Subfield(inputName)] = common::createBigintValues(values, nullAllowed);
 }
 
 template <>
@@ -1647,7 +1649,7 @@ void SubstraitToVeloxPlanConverter::setInFilter<TypeKind::SMALLINT>(
     int64_t value = variant.value<int16_t>();
     values.emplace_back(value);
   }
-  filters[common::Subfield(inputName, true)] = common::createBigintValues(values, nullAllowed);
+  filters[common::Subfield(inputName)] = common::createBigintValues(values, nullAllowed);
 }
 
 template <>
@@ -1668,23 +1670,6 @@ void SubstraitToVeloxPlanConverter::setInFilter<TypeKind::TINYINT>(
 }
 
 template <>
-void SubstraitToVeloxPlanConverter::setInFilter<TypeKind::DATE>(
-    const std::vector<variant>& variants,
-    bool nullAllowed,
-    const std::string& inputName,
-    connector::hive::SubfieldFilters& filters) {
-  // Use bigint values for int type.
-  std::vector<int64_t> values;
-  values.reserve(variants.size());
-  for (const auto& variant : variants) {
-    // Use int32 to get value from date variant.
-    int64_t value = variant.value<int32_t>();
-    values.emplace_back(value);
-  }
-  filters[common::Subfield(inputName, true)] = common::createBigintValues(values, nullAllowed);
-}
-
-template <>
 void SubstraitToVeloxPlanConverter::setInFilter<TypeKind::VARCHAR>(
     const std::vector<variant>& variants,
     bool nullAllowed,
@@ -1696,7 +1681,7 @@ void SubstraitToVeloxPlanConverter::setInFilter<TypeKind::VARCHAR>(
     std::string value = variant.value<std::string>();
     values.emplace_back(value);
   }
-  filters[common::Subfield(inputName, true)] = std::make_unique<common::BytesValues>(values, nullAllowed);
+  filters[common::Subfield(inputName)] = std::make_unique<common::BytesValues>(values, nullAllowed);
 }
 
 template <TypeKind KIND, typename FilterType>
@@ -1708,7 +1693,7 @@ void SubstraitToVeloxPlanConverter::setSubfieldFilter(
   using MultiRangeType = typename RangeTraits<KIND>::MultiRangeType;
 
   if (colFilters.size() == 1) {
-    filters[common::Subfield(inputName, true)] = std::move(colFilters[0]);
+    filters[common::Subfield(inputName)] = std::move(colFilters[0]);
   } else if (colFilters.size() > 1) {
     // BigintMultiRange should have been sorted
     if (colFilters[0]->kind() == common::FilterKind::kBigintRange) {
@@ -1860,6 +1845,11 @@ connector::hive::SubfieldFilters SubstraitToVeloxPlanConverter::mapToFilters(
   connector::hive::SubfieldFilters filters;
   for (uint32_t colIdx = 0; colIdx < inputNameList.size(); colIdx++) {
     auto inputType = inputTypeList[colIdx];
+    if (inputType->isDate()) {
+      constructSubfieldFilters<TypeKind::INTEGER, common::BigintRange>(
+          colIdx, inputNameList[colIdx], inputType, colInfoMap[colIdx], filters);
+      continue;
+    }
     switch (inputType->kind()) {
       case TypeKind::TINYINT:
         constructSubfieldFilters<TypeKind::TINYINT, common::BigintRange>(
@@ -1891,10 +1881,6 @@ connector::hive::SubfieldFilters SubstraitToVeloxPlanConverter::mapToFilters(
         break;
       case TypeKind::VARCHAR:
         constructSubfieldFilters<TypeKind::VARCHAR, common::Filter>(
-            colIdx, inputNameList[colIdx], inputType, columnToFilterInfo[colIdx], filters);
-        break;
-      case TypeKind::DATE:
-        constructSubfieldFilters<TypeKind::DATE, common::BigintRange>(
             colIdx, inputNameList[colIdx], inputType, columnToFilterInfo[colIdx], filters);
         break;
       case TypeKind::HUGEINT:
