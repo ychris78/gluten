@@ -44,10 +44,10 @@ if [[ "$LINUX_OS" == "ubuntu" || "$LINUX_OS" == "pop" ]]; then
   elif [ "$VERSION" == "22.04" ]; then
     process_setup_ubuntu_2204
   fi
-elif [ "$LINUX_OS" == "centos" ]; then
-  if [ "$VERSION" == "8" ]; then
+elif [[ "$LINUX_OS" == "centos" || "$LINUX_OS" == "rhel" ]]; then
+  if [ "${VERSION:0:1}" == "8" ]; then
     process_setup_centos_8
-  elif [ "$VERSION" == "7" ]; then
+  elif [ "${VERSION:0:1}" == "7" ]; then
     process_setup_centos_7
   fi
 elif [ "$LINUX_OS" == "alinux" ]; then

@@ -195,8 +195,8 @@ function setup_linux {
 
   if [[ "$LINUX_DISTRIBUTION" == "ubuntu" || "$LINUX_DISTRIBUTION" == "debian" || "$LINUX_DISTRIBUTION" == "pop" ]]; then
     scripts/setup-ubuntu.sh
-  elif [[ "$LINUX_DISTRIBUTION" == "centos" ]]; then
-    case "$LINUX_VERSION_ID" in
+  elif [[ "$LINUX_DISTRIBUTION" == "centos" || "$LINUX_DISTRIBUTION" == "rhel" ]]; then
+    case "${LINUX_VERSION_ID:0:1}" in
     8) scripts/setup-centos8.sh ;;
     7)
       scripts/setup-centos7.sh

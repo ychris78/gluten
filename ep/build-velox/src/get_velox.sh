@@ -214,8 +214,8 @@ function setup_linux {
   sed -i 's/-mavx2 -mfma -mavx -mf16c -mlzcnt -std=c++17/-march=native -std=c++17 -mno-avx512f/g' scripts/setup-helper-functions.sh
   if [[ "$LINUX_DISTRIBUTION" == "ubuntu" || "$LINUX_DISTRIBUTION" == "debian" || "$LINUX_DISTRIBUTION" == "pop" ]]; then
     process_setup_ubuntu
-  elif [[ "$LINUX_DISTRIBUTION" == "centos" ]]; then
-    case "$LINUX_VERSION_ID" in
+  elif [[ "$LINUX_DISTRIBUTION" == "centos" || "$LINUX_DISTRIBUTION" == "rhel" ]]; then
+    case "${LINUX_VERSION_ID:0:1}" in
       8) process_setup_centos8 ;;
       7) process_setup_centos7 ;;
       *)
